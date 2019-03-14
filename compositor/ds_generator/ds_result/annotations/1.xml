@@ -1,0 +1,23 @@
+<?xml version="1.0" ?>
+<annotation>
+    <object>
+        <name>ped_1</name>
+        <bndbox>
+            <xmin>100</xmin>
+            <xmax>127</xmax>
+            <ymin>200</ymin>
+            <ymax>238</ymax>
+        </bndbox>
+        <difficult>0</difficult>
+    </object>
+    <object>
+        <name>roller_0</name>
+        <bndbox>
+            <xmin>100</xmin>
+            <xmax>172</xmax>
+            <ymin>200</ymin>
+            <ymax>390</ymax>
+        </bndbox>
+        <difficult>0</difficult>
+    </object>
+</annotation>

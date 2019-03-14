@@ -1,0 +1,33 @@
+<?xml version="1.0" ?>
+<annotation>
+    <object>
+        <name>cc_0</name>
+        <bndbox>
+            <xmin>100</xmin>
+            <xmax>676</xmax>
+            <ymin>200</ymin>
+            <ymax>480</ymax>
+        </bndbox>
+        <difficult>0</difficult>
+    </object>
+    <object>
+        <name>mc_0</name>
+        <bndbox>
+            <xmin>100</xmin>
+            <xmax>211</xmax>
+            <ymin>200</ymin>
+            <ymax>423</ymax>
+        </bndbox>
+        <difficult>0</difficult>
+    </object>
+    <object>
+        <name>roller_1</name>
+        <bndbox>
+            <xmin>100</xmin>
+            <xmax>293</xmax>
+            <ymin>200</ymin>
+            <ymax>467</ymax>
+        </bndbox>
+        <difficult>0</difficult>
+    </object>
+</annotation>

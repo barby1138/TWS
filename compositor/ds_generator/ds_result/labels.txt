@@ -1,0 +1,8 @@
+0 __background__
+1 cc_0
+2 mc_0
+3 mc_1
+4 ped_0
+5 ped_1
+6 roller_0
+7 roller_1

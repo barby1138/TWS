@@ -1,0 +1,13 @@
+<?xml version="1.0" ?>
+<annotation>
+    <object>
+        <name>mc_1</name>
+        <bndbox>
+            <xmin>100</xmin>
+            <xmax>321</xmax>
+            <ymin>200</ymin>
+            <ymax>480</ymax>
+        </bndbox>
+        <difficult>0</difficult>
+    </object>
+</annotation>

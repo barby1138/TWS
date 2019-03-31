@@ -20,6 +20,7 @@ import numpy
 import argparse
 
 DO_SHOW = False
+MAKE_INV_MASK = False
 
 def create_pascal_label_colormap():
 
@@ -86,7 +87,10 @@ def save_segmentation(image, seg_image, obj_name, out_path):
 
   immask = Image.fromarray(seg_image).convert('RGB').convert('L')
   immask1 = Image.fromarray(binarize_array(numpy.array(immask)))
-  immask1_inv = Image.fromarray(inv_array(binarize_array(numpy.array(immask))))
+  if MAKE_INV_MASK :
+    immask1_inv = Image.fromarray(inv_array(binarize_array(numpy.array(immask))))
+  else :
+    immask1_inv = immask1
   plt.subplot(grid_spec[1])
   plt.imshow(immask1_inv)
   plt.axis('off')
@@ -122,6 +126,10 @@ args = parser.parse_args()
 im = Image.open(args.image)
 seg_im = Image.open(args.mask)
     
+plt.imshow(seg_im)
+if DO_SHOW:
+    plt.show()
+
 save_segmentation(im, numpy.array(seg_im), args.name, args.output)
 
 

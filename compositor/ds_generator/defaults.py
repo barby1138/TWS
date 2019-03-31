@@ -7,7 +7,7 @@ SELECTED_LIST_FILE = 'demo_data_dir/selected.txt'
 DISTRACTOR_LIST_FILE = 'demo_data_dir/neg_list.txt' 
 DISTRACTOR_DIR = 'demo_data_dir/distractor_objects_dir/'
 DISTRACTOR_GLOB_STRING = '*.jpg'
-INVERTED_MASK = True #True # Set to true if white pixels represent background
+INVERTED_MASK = False #True #True # Set to true if white pixels represent background
 
 # Parameters for generator
 NUMBER_OF_WORKERS = 4

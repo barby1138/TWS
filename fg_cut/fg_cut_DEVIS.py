@@ -19,7 +19,7 @@ import numpy
 
 import argparse
 
-DO_SHOW = False
+DO_SHOW = True
 MAKE_INV_MASK = False
 
 def create_pascal_label_colormap():
@@ -33,7 +33,6 @@ def create_pascal_label_colormap():
     ind >>= 3
 
   return colormap
-
 
 def label_to_color_image(label):
 
@@ -96,6 +95,21 @@ def save_segmentation(image, seg_image, obj_name, out_path):
   plt.axis('off')
   plt.title('inv mask')
   immask1_inv.save(out_path + '/' + obj_name + '.pbm')
+
+  #box
+  mask = numpy.array(immask1_inv)
+  if MAKE_INV_MASK:
+        mask = 255 - mask
+  rows = np.any(mask, axis=1)
+  cols = np.any(mask, axis=0)
+  if len(np.where(rows)[0]) > 0:
+      ymin, ymax = np.where(rows)[0][[0, -1]]
+      xmin, xmax = np.where(cols)[0][[0, -1]]
+      rect = int(xmin), int(xmax), int(ymin), int(ymax)
+  else:
+      rect = -1, -1, -1, -1
+  
+  print(rect)
 
   image.putalpha(immask1)
   plt.subplot(grid_spec[2])

@@ -70,7 +70,7 @@ def binarize_array(numpy_array1, threshold=1):
 def inv_array(numpy_array, threshold=1):
     numpy_array = 255 - numpy_array
     return numpy_array
-
+"""
 def save_segmentation(image, seg_image, obj_name, out_path):
   image.save(out_path + '/' + obj_name + '.jpg')
 
@@ -107,7 +107,7 @@ def save_segmentation(image, seg_image, obj_name, out_path):
 
   if DO_SHOW:
     plt.show()
-
+"""
 """
 LABEL_NAMES = np.asarray([
     'background', 'aeroplane', 'bicycle', 'bird', 'boat', 'bottle', 'bus',
@@ -341,7 +341,7 @@ class Cutter(object):
         self.imgNp1 = binarize_array(filter_ids(self.imgNp, [self.instanceId_1]))
         self.imgNp1_im = Image.fromarray(self.imgNp1).convert('RGB').convert('L')
 
-        self.imgNp1_im.save('.' + '/inst_' + str(self.instanceId_1) + '.pbm')
+        self.imgNp1_im.save('.' + '/inst_' + str(self.idx) + '_' + str(self.instanceId_1) + '.pbm')
         self.crop()
 
         plt.subplot(self.grid_spec[1])
@@ -354,6 +354,8 @@ class Cutter(object):
     #path_mask_out = path_mask.replace("/instance/", "/mask/").replace(".png", ".pbm")
 
     im = self.im
+    im.save('.' + '/inst_' + str(self.idx) + '_' + str(self.instanceId_1) + '.jpg')
+    
     im.putalpha(self.imgNp1_im)
     
     rows = np.any(self.imgNp1_im, axis=1)
@@ -367,7 +369,7 @@ class Cutter(object):
 
     print(rect)
 
-    im.crop((rect)).save('.' + '/inst_' + str(self.idx) + str(self.instanceId_1) + '.png')
+    im.crop((rect)).save('.' + '/inst_' + str(self.idx) + '_' + str(self.instanceId_1) + '.png')
     
   def button(self, event):
         x, y = int(event.xdata), int(event.ydata)

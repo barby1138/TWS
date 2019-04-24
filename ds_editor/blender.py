@@ -7,7 +7,7 @@ import xml.dom.minidom
 import cv2
 import numpy as np
 #import random
-from PIL import Image
+from PIL import Image, ImageOps
 #import scipy
 from multiprocessing import Pool
 from functools import partial
@@ -254,17 +254,39 @@ def create_image_anno(blend_json, blending_list=BLENDING_LIST):
         return anno_file
     """
     #all_objects = objects + distractor_objects
-    bg_file = blend_json['bg']['path']
-    print("bgf")
-    print(bg_file)
-    
+    bg = blend_json['bg']
+    #['inst_path']
+    #['semantic_path']
+
+    #print("bgf")
+    #print(bg_file)
+    try:
+        im_path = bg['im_path']
+    except KeyError:
+        print("no bg im_path")
+        return
+
+    try:
+        inst_path = bg['inst_path']
+        bg_inst = Image.open(inst_path)
+    except KeyError:
+        print("no bg inst_path")
+        bg_inst = None
+
+    try:
+        segm_path = bg['segm_path']
+        bg_segm = Image.open(segm_path)
+    except KeyError:
+        print("no bg segm_path")
+        bg_segm = None
+
     all_objects = blend_json['fgs']
 
     top = Element('annotation')
-    bg = Image.open(bg_file)
+    bg_img = Image.open(im_path)
     bgs = []
     for i in range(len(blending_list)):
-            bgs.append(bg.copy())
+        bgs.append(bg_img.copy())
 
     for idx, obj in enumerate(all_objects):
         x, y = obj['x'], obj['y']
@@ -285,6 +307,11 @@ def create_image_anno(blend_json, blending_list=BLENDING_LIST):
         if INVERTED_MASK:
             mask = Image.fromarray(255 - PIL2array1C(mask))
         o_w, o_h = orig_w, orig_h
+
+        #mirror
+        if obj['mirror'] == True:
+            fg = ImageOps.mirror(fg)
+            mask = ImageOps.mirror(mask)
 
         #scale
         # TODO check if > 1?
@@ -308,14 +335,6 @@ def create_image_anno(blend_json, blending_list=BLENDING_LIST):
         x = x - o_w // 2
         y = y - o_h // 2
         for i in range(len(blending_list)):
-            print(x)
-            print(y)
-            print(fg.mode)
-            print(mask.mode)
-            print(fg.width)
-            print(mask.width)
-            print(fg.height)
-            print(mask.height)
             if blending_list[i] == 'none' or blending_list[i] == 'motion':
                 bgs[i].paste(fg, (x, y), mask)
             elif blending_list[i] == 'poisson':
@@ -331,10 +350,18 @@ def create_image_anno(blend_json, blending_list=BLENDING_LIST):
                 bgs[i].paste(fg, (x, y), Image.fromarray(cv2.GaussianBlur(PIL2array1C(mask),(5,5),2)))
             elif blending_list[i] == 'box':
                 bgs[i].paste(fg, (x, y), Image.fromarray(cv2.blur(PIL2array1C(mask),(3,3))))
-           
-        # TODO what is it?
+        
+        if bg_inst is not None:
+            objID = obj['obj_id'] + idx*10
+            bg_inst.paste(objID, (x, y), mask)
+
+        if bg_segm is not None:
+            classID = obj['class_id']
+            bg_segm.paste(classID, (x, y), mask)
+
+        # obj box anno
         object_root = SubElement(top, 'object')
-        object_type = 'obj_type' #obj[1]
+        object_type = obj['class_name']
         object_type_entry = SubElement(object_root, 'name')
         object_type_entry.text = str(object_type)
         object_bndbox_entry = SubElement(object_root, 'bndbox')
@@ -352,10 +379,16 @@ def create_image_anno(blend_json, blending_list=BLENDING_LIST):
     for i in range(len(blending_list)):
         if blending_list[i] == 'motion':
             bgs[i] = LinearMotionBlur3C(PIL2array3C(bgs[i]))
-        #bgs[i].save(img_file.replace('none', blending_list[i]))
         bgs[i].save('./0_' + blending_list[i] + '.png')
 
+    if bg_inst is not None:
+        bg_inst.save('./0_inst.png')
+    
+    if bg_segm is not None:
+        bg_inst.save('./0_segm.png')
+
     """
+    # obj box anno
     xmlstr = xml.dom.minidom.parseString(tostring(top)).toprettyxml(indent="    ")
     with open(anno_file, "w") as f:
         f.write(xmlstr)

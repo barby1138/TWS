@@ -24,8 +24,6 @@ from pathlib import Path
 
 import blender
 
-OBJID_BASE = 6100
-
 def TextEdit(main_root, text):
     top = tk.Toplevel(main_root)
     main_text = tk.Text(top)
@@ -131,31 +129,45 @@ class PannelFg:
         if c == "Right":
             print("right")
 
-# TODO review incapsulate here func from canvas (Ex imageread)
 class Fg:
 
-    def __init__(self, parent, x, y, path, scale=1.0, angle=0.0, mirror=False):
+    def __init__(self, parent, x, y, path, scale=1.0, angle=0.0, mirror=False, mode='Load'):
         SIZE_MAX = 300
 
+        # TODO handle FileNotFoundError?
         img = Image.open(path)
         w, h = img.width, img.height
-        """
-        if scale == 1.0 and (w > SIZE_MAX or h > SIZE_MAX):
+        
+        if mode == 'New' and (w > SIZE_MAX or h > SIZE_MAX):
             scale = SIZE_MAX / max(w,h)
             w_o, h_o = int(img.width*scale), int(img.height*scale)
             img_resize = img.resize((w_o, h_o), Image.ANTIALIAS)
         else:
-        """
-        img_resize = img
+            img_resize = img
+
         img_tk = ImageTk.PhotoImage(img_resize)
         img_tag = parent.canvas.create_image(x, y, image=img_tk)
         parent.canvas.tag_bind(img_tag, '<Button-1>', self.on_fg_click)
 
         self.x = x
         self.y = y
-        self.obj_id = OBJID_BASE
-        self.class_id = 0
-        self.class_name = 'none'
+        
+        try:
+            with open(path.replace('.png', '.json')) as json_file:  
+                print(path.replace('.png', '.json'))
+                fg_json = json.load(json_file)
+            print('loaded %s' % fg_json)
+        except FileNotFoundError:
+            # default json
+            fg_json={"class_name":"car"}
+            print('default %s' % fg_json)
+
+        try:
+            self.class_name = fg_json["class_name"]
+        except KeyError:
+            print("WARNING!!! corrupted json")
+            self.class_name = 'unk'
+
         self.img = img
         # is needed
         self.img_tk = img_tk
@@ -255,7 +267,7 @@ class PanelImg(tk.Frame):
         self.render_fg(act='update', path=new_path)
 
     def new_fg(self, x, y):
-        self.curr_fg = Fg(self, x, y, self.sel_fg_path)
+        self.curr_fg = Fg(self, x, y, self.sel_fg_path, mode='New')
         self.fg_arr.append(self.curr_fg)
 
     def __init__(self, master, parent, pathList=None):
@@ -398,8 +410,6 @@ class PanelImg(tk.Frame):
             fg_el['x'] = int(fg.x)
             fg_el['y'] = int(fg.y)
             fg_el['class_name'] = fg.class_name
-            fg_el['class_id'] = fg.class_id
-            fg_el['obj_id'] = fg.obj_id
             #fg_el['img_tag'] = fg.img_tag
             fg_el['path'] = fg.path.replace('.png', '.jpg')
             fg_el['angle'] = fg.angle

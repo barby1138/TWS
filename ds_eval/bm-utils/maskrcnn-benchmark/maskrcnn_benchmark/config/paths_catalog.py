@@ -110,9 +110,18 @@ class DatasetCatalog(object):
             "img_dir": "kitti/images",
             "ann_file": "kitti/annotations/instancesonly_filtered_kitti_training.json"
         },
-        "vkitti_fine_instanceonly_seg_train_cocostyle": {
+        
+        "vkitti_clone_fine_instanceonly_seg_train_cocostyle": {
             "img_dir": "vkitti/images",
-            "ann_file": "vkitti/annotations/instancesonly_filtered_vkitti_training.json"
+            "ann_file": "vkitti/annotations/instancesonly_filtered_vkitti_clone_training.json"
+        },
+        "vkitti_no_weather_fine_instanceonly_seg_train_cocostyle": {
+            "img_dir": "vkitti/images",
+            "ann_file": "vkitti/annotations/instancesonly_filtered_vkitti_no_weather_training.json"
+        },
+        "vkitti_full_fine_instanceonly_seg_train_cocostyle": {
+            "img_dir": "vkitti/images",
+            "ann_file": "vkitti/annotations/instancesonly_filtered_vkitti_full_training.json"
         },
         # val with CS
     }

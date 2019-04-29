@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 
 import pdb
 
+from PIL import Image, ImageOps
 
 def create_mask(img_mask, img_target, img_src, offset=(0, 0)):
     '''
@@ -65,7 +66,7 @@ def get_gradient_sum(img, i, j, h, w):
 def get_mixed_gradient_sum(img_src, img_target, i, j, h, w, ofs,
                            c=1.0):
     """
-    Return the sum of the gradient of the source imgae.
+    Return the sum of the gradient of the source image.
     * 3D array for RGB
 
     c(>=0): larger, the more important the target image gradient is
@@ -92,8 +93,14 @@ def get_mixed_gradient_sum(img_src, img_target, i, j, h, w, ofs,
     return v_sum
 
 
-def poisson_blend(img_mask, img_src, img_target, method='mix', c=1.0,
-                  offset_adj=(0,0)):
+
+def PIL2array1C(img):
+    return np.array(img.getdata(), np.uint8).reshape(img.size[1], img.size[0])
+
+def PIL2array3C(img):
+    return np.array(img.getdata(), np.uint8).reshape(img.size[1], img.size[0], 3)
+
+def blend(img_mask, img_src, img_target, method='mix', c=1.0, offset_adj=(0,0)):
 
     hm, wm = img_mask.shape
     region_size = hm * wm
@@ -186,11 +193,18 @@ def poisson_blend(img_mask, img_src, img_target, method='mix', c=1.0,
 
 
 if __name__ == "__main__":
-    offset = (40, -30)    
-    img_mask = io.imread('/Users/ysakamoto/Projects/sccomp/mask.png', as_grey=True)
-    img_src = io.imread('./testimages/0.png').astype(np.float64)
-    img_target = io.imread('./testimages/0.png')
-    
+    offset = (0,0) #(40, -30)    
+    """
+    img_mask = io.imread('./FG_DB/inst_0_6663.pbm', as_grey=True)
+    img_target = io.imread('./DS/image_2/000000_10.png').astype(np.float64)
+    img_src = io.imread('./FG_DB/inst_0_6663.jpg')
+
+    img_mask, img_src, offset_adj = create_mask(img_mask.astype(np.float64), img_target, img_src, offset=offset)
+    img_pro = poisson_blend(img_mask, img_src, img_target, method='normal', offset_adj=offset_adj)
+    plt.imshow(img_pro)
+    #plt.show()
+    io.imsave('./poisson_normal.png', img_pro)
+    """
     # img_src = io.imread('./testimages/test1_src.png').astype(np.float64)
     # img_target = io.imread('./testimages/test1_target.png')
     # img_mask = io.imread('./testimages/test1_mask.png', as_grey=True)
@@ -204,15 +218,20 @@ if __name__ == "__main__":
     # img_mask = skimage.transform.resize(img_mask, (np.array(img_mask.shape)//fac)[:2])
     # img_mask = color.rgb2grey(img_mask)
 
-    img_mask, img_src, offset_adj \
-        = create_mask(img_mask.astype(np.float64),
-                      img_target, img_src, offset=offset)
+    #img_mask = io.imread('./FG_DB/inst_0_6663.pbm', as_grey=True)
+    #img_src = io.imread('./DS/image_2/000000_10.png').astype(np.float64)
+    #img_target = io.imread('./FG_DB/inst_0_6663.jpg')
+    bg = Image.open('./DS/image_2/000000_10.png')
+    mask = Image.open('./FG_DB/inst_0_6663.pbm')
+    fg = Image.open('./FG_DB/inst_0_6663.jpg')
 
-    img_pro = poisson_blend(img_mask, img_src, img_target,
-                            method='normal', offset_adj=offset_adj)
-    plt.imshow(img_pro)
-    plt.show()
-    io.imsave('./testimages/poisson_normal.png', img_pro)
+    img_mask = PIL2array1C(mask)
+    img_src = PIL2array3C(fg).astype(np.float64)
+    img_target = PIL2array3C(bg)
+    img_mask, img_src, offset_adj = create_mask(img_mask.astype(np.float64), img_target, img_src, offset=offset)
+    bg_array = blend(img_mask, img_src, img_target, method='normal', offset_adj=offset_adj)
+    bgs = Image.fromarray(bg_array, 'RGB') 
+    bgs.save('./poisson_normal_0.png')
 
     import pdb
     # pdb.set_trace()

@@ -31,7 +31,6 @@ def parse_args():
         sys.exit(1)
     return parser.parse_args()
 
-
 def poly_to_box(poly):
     """Convert a polygon into a tight bounding box."""
     x0 = min(min(p[::2]) for p in poly)
@@ -369,13 +368,14 @@ def convert_vkitti_instance_only(
         '15-deg-right',
         '30-deg-left',
         '30-deg-right',
+
         'clone',
         
-        #'fog',
-        #'morning',
-        #'overcast',
-        #'rain',
-        #'sunset',
+        'fog',
+        'morning',
+        'overcast',
+        'rain',
+        'sunset',
     ]
 
     json_name = 'instancesonly_filtered_%s.json'

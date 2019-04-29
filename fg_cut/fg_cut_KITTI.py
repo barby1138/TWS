@@ -24,6 +24,8 @@ import os, sys
 
 from pathlib import Path
 
+import json
+
 DO_SHOW = True
 MAKE_INV_MASK = False
 
@@ -297,7 +299,7 @@ class Cutter(object):
       self.img = Image.open(self.mask_path)
       # Image as numpy array
       self.imgNp = np.array(self.img)
-
+      
       plt.figure(figsize=(15, 5))
       self.grid_spec = gridspec.GridSpec(1, 2, width_ratios=[6, 6])
   
@@ -305,9 +307,12 @@ class Cutter(object):
       plt.connect('button_press_event', self.button)
   
       self.render_pic()
+      plt.show()
 
   def render_pic(self):
 
+      #self.grid_spec = gridspec.GridSpec(1, 2, width_ratios=[6, 6])
+  
       plt.subplot(self.grid_spec[0])
       plt.imshow(self.im)
       plt.title('src image')
@@ -316,7 +321,7 @@ class Cutter(object):
       plt.imshow(self.seg_im)
       plt.title('seg image')
      
-      plt.show()
+      plt.draw()
 
   def init_pic(self, inc):
       self.idx += inc
@@ -336,40 +341,51 @@ class Cutter(object):
       self.render_pic()
 
   def render_inst(self, point):
-        print(point[0])
-        self.instanceId_1 = self.imgNp[point[0][1]][point[0][0]]
-        self.imgNp1 = binarize_array(filter_ids(self.imgNp, [self.instanceId_1]))
-        self.imgNp1_im = Image.fromarray(self.imgNp1).convert('RGB').convert('L')
+      print(point[0])
+      self.instanceId_1 = self.imgNp[point[0][1]][point[0][0]]
+      self.imgNp1 = binarize_array(filter_ids(self.imgNp, [self.instanceId_1]))
+      self.imgNp1_im = Image.fromarray(self.imgNp1).convert('RGB').convert('L')
+      self.imgNp1_im.save('.' + '/inst_' + str(self.idx) + '_' + str(self.instanceId_1) + '.pbm')
 
-        self.imgNp1_im.save('.' + '/inst_' + str(self.idx) + '_' + str(self.instanceId_1) + '.pbm')
-        self.crop()
+      id = self.instanceId_1 // 256
+      print(id2label[id].name)
 
-        plt.subplot(self.grid_spec[1])
-        #plt.imshow(Image.fromarray(imgNp1))
-        plt.imshow(self.imgNp1_im)
-        plt.imshow(self.im, alpha=0.4)
-        plt.show()
+      data = {}
+      data["class_bame"] = id2label[id].name
+      with open('.' + '/inst_' + str(self.idx) + '_' + str(self.instanceId_1) + '.json', 'w') as outfile:  
+        json.dump(data, outfile)
+
+      self.crop()
+
+      plt.subplot(self.grid_spec[1])
+      #plt.imshow(Image.fromarray(imgNp1))
+      plt.imshow(self.imgNp1_im)
+      plt.imshow(self.im, alpha=0.4)
+      plt.draw()
 
   def crop(self):
-    #path_mask_out = path_mask.replace("/instance/", "/mask/").replace(".png", ".pbm")
+      #path_mask_out = path_mask.replace("/instance/", "/mask/").replace(".png", ".pbm")
 
-    im = self.im
-    im.save('.' + '/inst_' + str(self.idx) + '_' + str(self.instanceId_1) + '.jpg')
+      im = self.im
+      try:
+        im.save('.' + '/inst_' + str(self.idx) + '_' + str(self.instanceId_1) + '.jpg')
+      except OSError:
+        print("save jpg error")
     
-    im.putalpha(self.imgNp1_im)
+      im.putalpha(self.imgNp1_im)
     
-    rows = np.any(self.imgNp1_im, axis=1)
-    cols = np.any(self.imgNp1_im, axis=0)
-    if len(np.where(rows)[0]) > 0:
-      ymin, ymax = np.where(rows)[0][[0, -1]]
-      xmin, xmax = np.where(cols)[0][[0, -1]]
-      rect = int(xmin), int(ymin), int(xmax), int(ymax)
-    else:
-      rect = -1, -1, -1, -1
+      rows = np.any(self.imgNp1_im, axis=1)
+      cols = np.any(self.imgNp1_im, axis=0)
+      if len(np.where(rows)[0]) > 0:
+        ymin, ymax = np.where(rows)[0][[0, -1]]
+        xmin, xmax = np.where(cols)[0][[0, -1]]
+        rect = int(xmin), int(ymin), int(xmax), int(ymax)
+      else:
+        rect = -1, -1, -1, -1
 
-    print(rect)
+      print(rect)
 
-    im.crop((rect)).save('.' + '/inst_' + str(self.idx) + '_' + str(self.instanceId_1) + '.png')
+      im.crop((rect)).save('.' + '/inst_' + str(self.idx) + '_' + str(self.instanceId_1) + '.png')
     
   def button(self, event):
         x, y = int(event.xdata), int(event.ydata)

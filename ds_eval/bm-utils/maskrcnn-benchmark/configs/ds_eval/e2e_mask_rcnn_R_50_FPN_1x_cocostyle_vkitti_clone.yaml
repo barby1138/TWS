@@ -31,7 +31,7 @@ MODEL:
     SHARE_BOX_FEATURE_EXTRACTOR: False
   MASK_ON: True
 DATASETS:
-  TRAIN: ("vkitti_fine_instanceonly_seg_train_cocostyle",)
+  TRAIN: ("vkitti_clone_fine_instanceonly_seg_train_cocostyle",)
   TEST: ("cityscapes_fine_instanceonly_seg_val_cocostyle",)
 DATALOADER:
   SIZE_DIVISIBILITY: 32

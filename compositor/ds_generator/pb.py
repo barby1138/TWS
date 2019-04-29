@@ -188,8 +188,8 @@ def poisson_blend(img_mask, img_src, img_target, method='mix', c=1.0,
 if __name__ == "__main__":
     offset = (40, -30)    
     img_mask = io.imread('/Users/ysakamoto/Projects/sccomp/mask.png', as_grey=True)
-    img_src = io.imread('./testimages/0.png').astype(np.float64)
-    img_target = io.imread('./testimages/0.png')
+    img_target = io.imread('./testimages/0.png').astype(np.float64)
+    img_src = io.imread('./testimages/0.png')
     
     # img_src = io.imread('./testimages/test1_src.png').astype(np.float64)
     # img_target = io.imread('./testimages/test1_target.png')
@@ -204,12 +204,17 @@ if __name__ == "__main__":
     # img_mask = skimage.transform.resize(img_mask, (np.array(img_mask.shape)//fac)[:2])
     # img_mask = color.rgb2grey(img_mask)
 
-    img_mask, img_src, offset_adj \
-        = create_mask(img_mask.astype(np.float64),
-                      img_target, img_src, offset=offset)
+    img_mask, img_src, offset_adj = create_mask(img_mask.astype(np.float64), img_target, img_src, offset=offset)
 
-    img_pro = poisson_blend(img_mask, img_src, img_target,
-                            method='normal', offset_adj=offset_adj)
+    img_pro = poisson_blend(img_mask, img_src, img_target, method='normal', offset_adj=offset_adj)
+
+    #offset = (y, x)
+    #img_mask = PIL2array1C(mask)
+    #img_src = PIL2array3C(fg).astype(np.float64)
+    #img_target = PIL2array3C(bgs[i])
+    #img_mask, img_src, offset_adj = create_mask(img_mask.astype(np.float64), img_target, img_src, offset=offset)
+    #bg_array = poisson_blend(img_mask, img_src, img_target, method='normal', offset_adj=offset_adj)
+
     plt.imshow(img_pro)
     plt.show()
     io.imsave('./testimages/poisson_normal.png', img_pro)

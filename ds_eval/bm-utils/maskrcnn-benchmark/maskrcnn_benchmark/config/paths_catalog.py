@@ -108,9 +108,13 @@ class DatasetCatalog(object):
         #[TSIS]
         "kitti_fine_instanceonly_seg_train_cocostyle": {
             "img_dir": "kitti/images",
-            "ann_file": "kitti/annotations/instancesonly_filtered_kitti_training.json"
+            "ann_file": "kitti/annotations/instancesonly_filtered_kitti_train.json"
         },
-        
+        "kitti_fine_instanceonly_seg_val_cocostyle": {
+            "img_dir": "kitti/images",
+            "ann_file": "kitti/annotations/instancesonly_filtered_kitti_val.json"
+        },
+
         "vkitti_clone_fine_instanceonly_seg_train_cocostyle": {
             "img_dir": "vkitti/images",
             "ann_file": "vkitti/annotations/instancesonly_filtered_vkitti_clone_training.json"
@@ -123,7 +127,13 @@ class DatasetCatalog(object):
             "img_dir": "vkitti/images",
             "ann_file": "vkitti/annotations/instancesonly_filtered_vkitti_full_training.json"
         },
-        # val with CS
+        # val with KITTI
+
+        "tws_fine_instanceonly_seg_train_cocostyle": {
+            "img_dir": "tws/images",
+            "ann_file": "tws/annotations/instancesonly_filtered_tws_train.json"
+        },
+        # val with KITTI
     }
 
     @staticmethod

@@ -85,6 +85,18 @@ def make_ds_file_names(root, ds_name, data_set, filename, prefix=None):
 
         full_rgb_file_name = os.path.join(root, filename)
         full_seg_file_name = full_rgb_file_name.replace('/vkitti_1.3.1_rgb/', '/vkitti_1.3.1_scenegt/')
+    elif ds_name == 'tws':
+        ds_file_name, ds_seg_file_name = filename, filename
+        full_rgb_file_name = os.path.join(root, filename)
+        full_seg_file_name = full_rgb_file_name.replace('/image_2/', '/instance/')
+        exists = os.path.isfile(full_seg_file_name)
+        if not exists:
+            full_seg_file_name = full_seg_file_name.split('.')[0] + '_inst.png'
+
+        #print(ds_file_name)
+        #print(ds_seg_file_name)
+        #print(full_rgb_file_name)
+        #print(full_seg_file_name)
     else:
         # todo ex?
         ds_file_name, ds_seg_file_name, full_rgb_file_name, full_seg_file_name = None, None, None, None
@@ -252,9 +264,11 @@ def convert_cityscapes_instance_only(
 def convert_kitti_instance_only(data_dir, out_dir):
 
     sets = [
-        'kitti_training',
+        'kitti_val',
+        'kitti_train',
     ]
     ann_dirs = [
+        'data_semantics/val/image_2',
         'data_semantics/training/image_2',
     ]
     json_name = 'instancesonly_filtered_%s.json'
@@ -344,8 +358,15 @@ def convert_vkitti_instance_only(
                 if cat == 'Car':
                     cat_id = 26
 
-                # 26*1000 + 0                  
-                colormap[ '#%02x%02x%02x' % (int(r), int(g), int(b)) ] = cat_id * 1000 + inst_id
+                if cat == 'Van':
+                    cat_id = 26
+
+                # 26*1000 + 0     
+                inst_id = cat_id * 1000 + inst_id  
+                color_id = '#%02x%02x%02x' % (int(r), int(g), int(b))
+                #print(color_id)           
+                #print(inst_id)           
+                colormap[color_id] = inst_id
                 #print(colormap[ '#%02x%02x%02x' % (int(r), int(g), int(b)) ])
         
         return colormap
@@ -358,24 +379,24 @@ def convert_vkitti_instance_only(
     ]
     worlds = [
         '0001',
-        '0002',
-        '0006',
-        '0018',
-        '0020',
+        #'0002',
+        #'0006',
+        #'0018',
+        #'0020',
     ]
     variations = [
-        '15-deg-left',
-        '15-deg-right',
-        '30-deg-left',
-        '30-deg-right',
+        #'15-deg-left',
+        #'15-deg-right',
+        #'30-deg-left',
+        #'30-deg-right',
 
         'clone',
         
-        'fog',
-        'morning',
-        'overcast',
-        'rain',
-        'sunset',
+        #'fog',
+        #'morning',
+        #'overcast',
+        #'rain',
+        #'sunset',
     ]
 
     json_name = 'instancesonly_filtered_%s.json'
@@ -451,6 +472,75 @@ def convert_vkitti_instance_only(
         with open(os.path.join(out_dir_json, json_name % data_set), 'w') as outfile:
             outfile.write(json.dumps(ann_dict))
 
+#
+def convert_tws_instance_only(data_dir, out_dir):
+
+    sets = [
+        'tws_train',
+    ]
+    ann_dirs = [
+        #'data_semantics/val/image_2',
+        'data_semantics/training/image_2',
+    ]
+    json_name = 'instancesonly_filtered_%s.json'
+    ends_in = '%s_polygons.json'
+    img_id = 0
+    ann_id = 0
+    cat_id = 1
+    category_dict = {}
+
+    category_instancesonly = [
+        #'person',
+        #'rider',
+        'car',
+
+        #'truck',
+        #'bus',
+        #'train',
+        #'motorcycle',
+        #'bicycle',
+    ]
+
+    out_dir_json, out_dir_images = make_dirs('tws', out_dir)
+
+    for data_set, ann_dir in zip(sets, ann_dirs):
+        print('Starting %s' % data_set)
+        ann_dict = {}
+        images = []
+        annotations = []
+        ann_dir = os.path.join(data_dir, ann_dir)
+
+        for root, _, files in os.walk(ann_dir):
+            
+            for filename in files:
+                if len(images) % 50 == 0:
+                    print("Processed %s images, %s annotations" % (len(images), len(annotations)))
+
+                img_id, ann_id, cat_id = process_file(root=root,
+                            out_dir_images=out_dir_images,
+                            ds_name='tws', 
+                            ds_subname=data_set, 
+                            prefix=None, 
+                            color_to_instance_map=None, 
+                            filename=filename, 
+                            images=images,
+                            annotations=annotations, 
+                            category_dict=category_dict,
+                            category_instancesonly=category_instancesonly, 
+                            img_id=img_id, 
+                            ann_id=ann_id, 
+                            cat_id=cat_id)
+
+        ann_dict['images'] = images
+        categories = [{"id": category_dict[name], "name": name} for name in
+                      category_dict]
+        ann_dict['categories'] = categories
+        ann_dict['annotations'] = annotations
+        print("Num categories: %s" % len(categories))
+        print("Num images: %s" % len(images))
+        print("Num annotations: %s" % len(annotations))
+        with open(os.path.join(out_dir_json, json_name % data_set), 'w') as outfile:
+            outfile.write(json.dumps(ann_dict))
 
 if __name__ == '__main__':
     args = parse_args()
@@ -460,6 +550,8 @@ if __name__ == '__main__':
         convert_kitti_instance_only(args.datadir, args.outdir)
     elif args.dataset == "vkitti_instance_only":
         convert_vkitti_instance_only(args.datadir, args.outdir)
+    elif args.dataset == "tws_instance_only":
+        convert_tws_instance_only(args.datadir, args.outdir)
     else:
         print("Dataset not supported: %s" % args.dataset)
 

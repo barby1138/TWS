@@ -165,7 +165,7 @@ class Fg:
         try:
             self.class_name = fg_json["class_name"]
         except KeyError:
-            print("WARNING!!! corrupted json")
+            print("WARNING!!! corrupted json %s" % fg_json)
             self.class_name = 'unk'
 
         self.img = img
@@ -311,6 +311,7 @@ class PanelImg(tk.Frame):
 
         self.canvas.focus_set()
 
+        self.mkt_path = 'untitled.mkt'
         #self.open_mkt()
 
     def on_mousewheel(self, event):
@@ -341,6 +342,11 @@ class PanelImg(tk.Frame):
         self.render_fg(delta=count, act=act)
 
     def open_bg(self, path):
+        # reset
+        # TODO ask if to save
+        self.canvas.delete("all")
+        self.fg_arr = []
+
         self.winfo_toplevel().title(path)
         image = cv2.cvtColor(cv2.imread(path), cv2.COLOR_BGR2RGB)
         image = Image.fromarray(image)
@@ -348,7 +354,9 @@ class PanelImg(tk.Frame):
         self.img_bg_path = path
         self.img_bg = image
 
-        self.canvas.itemconfig(self.img_bg_tag, image=image)
+        #self.canvas.itemconfig(self.img_bg_tag, image=image)
+        self.img_bg_tag = self.canvas.create_image(0, 0, anchor=NW, image=self.img_bg)
+ 
 
     def on_press_key(self, event):
         c = event.keysym
@@ -397,9 +405,17 @@ class PanelImg(tk.Frame):
     def on_mousemove(self, event):
         self.render_fg((self.canvas.canvasx(event.x), self.canvas.canvasy(event.y)))
 
-    def mkt_to_json(self):
+    def mkt_to_json(self, filename=None):
         cmd = {}
-        cmd['bg'] = { 'im_path': self.img_bg_path,
+
+        #TODO all pathes as relative inside the project
+        #make mkt parser to fix all pathes in ready mkt s
+        if filename is None :
+            mkt_path = self.mkt_path
+        else :
+            mkt_path = filename
+        cmd['general'] = { 'mkt_path' : mkt_path }
+        cmd['bg'] = {   'im_path': self.img_bg_path,
                         'inst_path': self.img_bg_path.replace('/image_2/', '/instance/'),
                         'segm_path': self.img_bg_path.replace('/image_2/', '/semantic/') 
         }
@@ -429,34 +445,49 @@ class PanelImg(tk.Frame):
             cmd = json.load(json_file)
             print(cmd)
 
-        #def mkt_from_json(self):
-        path = cmd['bg']['im_path']
-        self.open_bg(path)
-        fgs = cmd['fgs']
-        for k in fgs:
-            fg = Fg(self, 
+            self.mkt_path = mkt_file
+            #def mkt_from_json(self):
+            path = cmd['bg']['im_path']
+            self.open_bg(path)
+            fgs = cmd['fgs']
+            for k in fgs:
+                fg = Fg(self, 
                     k['x'], 
                     k['y'], 
                     k['path'].replace('.jpg', '.png'), 
                     k['scale'], 
                     k['angle'],
                     k['mirror'])
-            self.fg_arr.append(fg)
+                self.fg_arr.append(fg)
 
     def save_mkt(self, filename='./untitled.mkt'):
-        data = self.mkt_to_json()
+        data = self.mkt_to_json(filename)
         with open(filename, 'w') as outfile:  
             json.dump(data, outfile)
+        self.mkt_path = filename
 
     def save_as_mkt(self):
         filename = filedialog.asksaveasfilename(initialdir=MKT_ROOT, title="Save file", filetypes=(("mkt files","*.mkt"),("all files","*.*")))
         self.save_mkt(filename)
+        self.mkt_path = filename
     
     def blend(self):
-        #self.save_mkt()
         data = self.mkt_to_json()
         print("blend")
         blender.create_image_anno(data)
+
+    def blend_mkt_folder(self):
+        print("hi")
+        #mkt_path = filedialog.askdirectory(initialdir=MKT_ROOT)
+        mkt_path = filedialog.askdirectory()
+        mkt_files = [os.path.join(mkt_path, f) for f in listdir(mkt_path) if isfile(join(mkt_path, f)) and f.endswith(".mkt")]
+
+        for mkt_file in mkt_files:
+            with open(mkt_file) as json_file:  
+                data = json.load(json_file)
+                print(data)
+                print("blend %s" % json_file.name)
+                blender.create_image_anno(data)
 
 class UI_manager:
 
@@ -470,8 +501,10 @@ class UI_manager:
         self.pf = PannelFg(master=root, parent=self.win_main, objs_path=FG_DB_ROOT)
 
 # TODO config
+#FG_DB_ROOT = "./FG_DB/WIERD"
 FG_DB_ROOT = "./FG_DB"
-DS_ROOT = "/home/tsis/Downloads/DS/K/data_semantics/training"
+
+DS_ROOT = "/home/tsis/Downloads/DS/K_1/data_semantics/training"
 MKT_ROOT = './EXP'
 im_path = DS_ROOT + '/image_2'
 #inst_path = DS_ROOT + '/instance'
@@ -489,7 +522,7 @@ menu.add_cascade(label='File', menu=filemenu)
 #filemenu.add_command(label='New') 
 filemenu.add_command(label='Open maket...', command=ui.win_main.open_mkt) 
 filemenu.add_command(label='Save maket', command=ui.win_main.save_mkt) 
-filemenu.add_command(label='Save as maket...', command=ui.win_main.save_as_mkt) 
+filemenu.add_command(label='Save maket as...', command=ui.win_main.save_as_mkt) 
 filemenu.add_separator() 
 filemenu.add_command(label='Exit', underline=1, command=root.quit, accelerator="Ctrl+X") 
 def bye(event):
@@ -504,9 +537,15 @@ configmenu.add_command(label='Options...')
 toolsmenu = tk.Menu(menu) 
 menu.add_cascade(label='Tools', menu=toolsmenu) 
 toolsmenu.add_command(label='Blend', underline=0, command=ui.win_main.blend, accelerator="Ctrl+B") 
+toolsmenu.add_command(label='Blend FOLDER', underline=0, command=ui.win_main.blend_mkt_folder, accelerator="Ctrl+Shift+B") 
 def blend(event):
     ui.win_main.blend()
+def blend_mkt_folder(event):
+    ui.win_main.blend_mkt_folder()
+
 root.bind_all("<Control-b>", blend)
+root.bind_all("<Control-Shift-b>", blend_mkt_folder)
+
 
 helpmenu = tk.Menu(menu) 
 menu.add_cascade(label='Help', menu=helpmenu) 

@@ -32,6 +32,7 @@ def vkitti_to_cityscapes_instaces(instance_img, color_to_instance_map):
             for y in range(0,instance_img.shape[1]):
                 #print(instance_img[x][y])
                 try:
+                    #print(tuple(instance_img[x][y]))
                     #print(color_to_instance_map[ '#%02x%02x%02x' % tuple(instance_img[x][y]) ])
                     cs_instance[x][y] = color_to_instance_map[ '#%02x%02x%02x' % tuple(instance_img[x][y]) ]
                 except KeyError:
@@ -59,7 +60,7 @@ def instances2dict_with_polygons(imageFileList, instance_format='cityscapes', co
 
         # Image as numpy array
         imgNp = np.array(img)
-        if instance_format == 'kitti':
+        if instance_format == 'kitti' or instance_format == 'tws':
             imgNp = kitti_to_cityscapes_instaces(imgNp)
         if instance_format == 'vkitti':
             imgNp = vkitti_to_cityscapes_instaces(imgNp, color_to_instance_map)

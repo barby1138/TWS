@@ -266,19 +266,20 @@ name2label      = { label.name    : label for label in labels           }
 # id to label object
 id2label        = { label.id      : label for label in labels           }
 
+PREFIX=0
 #set in cmd json?
-MAX_BLEND_FG = 5
+MAX_BLEND_FG = 4
 MAX_MIN_FG_DIFF = 1 # min = max - diff
 
-#POISSON_BLENDING_DIR = './EXP'
+BLENDING_DIR = './BLEND/DEMO_DS/data_semantics'
 INVERTED_MASK = False
 NUMBER_OF_WORKERS = 4
 
 ALPHA = 0.7
-BLENDING_VARIATIONS = 2
+BLENDING_VARIATIONS = 15
 # TODO investigate poisson and motion
 #BLENDING_LIST = ['poisson']
-BLENDING_LIST = ['gaussian','none', 'box']
+BLENDING_LIST = ['gaussian', 'box']
 #BLENDING_LIST = ['gaussian','poisson', 'none', 'box', 'motion']
 
 #from defaults import *
@@ -511,20 +512,29 @@ def create_image_anno(blend_json, blending_variations=BLENDING_VARIATIONS):
         return anno_file
     """
     #all_objects = objects + distractor_objects
-    bg = blend_json['bg']
-    #['inst_path']
-    #['semantic_path']
-
-    #print("bgf")
-    #print(bg_file)
-
+    
     blending_list = BLENDING_LIST
+
+    try:
+        bg = blend_json['bg']
+    except KeyError:
+        print("no bg")
+        return
 
     try:
         im_path = bg['im_path']
     except KeyError:
         print("no bg im_path")
         return
+
+    try:
+        gen = blend_json['general']
+        mkt_path = gen['mkt_path']
+        PREFIX = os.path.basename(mkt_path).split('.')[0]
+        #print(PREFIX)
+    except KeyError:
+        print("no gen")
+        PREFIX = os.path.basename(im_path).split('.')[0]
 
     try:
         inst_path = bg['inst_path']
@@ -562,6 +572,21 @@ def create_image_anno(blend_json, blending_variations=BLENDING_VARIATIONS):
     bg_segms = []
     bg_insts = []
     blend_fgs = []
+
+    # get all possible combination by max
+    from itertools import combinations 
+    all_comb = list(combinations(range(len(all_objects)), max_objects_to_blend_len))
+    print("unique all_comb")
+    print(all_comb)
+    print(len(all_comb))
+    if blending_variations > len(all_comb):
+        print("WARNING!!! blend less than needed")
+    blending_variations = min(blending_variations, len(all_comb))
+    to_blen_comb = rnd.sample(all_comb, blending_variations)
+    print("to_blend_comb")
+    print(to_blen_comb)
+    print(len(to_blen_comb))
+    
     for i in range(blending_variations):
         bgs.append(bg_img.copy())
         hls.append(hl.copy())
@@ -570,11 +595,12 @@ def create_image_anno(blend_json, blending_variations=BLENDING_VARIATIONS):
         if bg_inst is not None:
             bg_insts.append(bg_inst.copy())
 
-        print("max %d min %d" % (max_objects_to_blend_len, min_objects_to_blend_len))
-        objects_to_blend_len = np.random.randint(low=min_objects_to_blend_len, high=max_objects_to_blend_len)
-        blend_fg = rnd.sample(range(len(all_objects)), objects_to_blend_len)
+        #print("max %d min %d" % (max_objects_to_blend_len, min_objects_to_blend_len))
+        objects_to_blend_len = max_objects_to_blend_len
+        #objects_to_blend_len = np.random.randint(low=min_objects_to_blend_len, high=max_objects_to_blend_len)
+        blend_fg = rnd.sample(to_blen_comb[i], objects_to_blend_len)
         print("in pic %d objects_to_blend_len %d" % (i, objects_to_blend_len))
-        print(blend_fg)
+        #print(blend_fg)
         # TODO check for same existing fg config
         blend_fgs.append(blend_fg)
 
@@ -633,9 +659,9 @@ def create_image_anno(blend_json, blending_variations=BLENDING_VARIATIONS):
         y = y - o_h // 2
 
         for i in range(blending_variations):
-            print(blend_fgs[0])
+            #print(blend_fgs[0])
             if idx not in blend_fgs[i]:
-                print("skip obj %d" % idx)
+                #print("skip obj %d" % idx)
                 continue                
 
             hls[i].paste(255, (x, y), mask)
@@ -693,18 +719,18 @@ def create_image_anno(blend_json, blending_variations=BLENDING_VARIATIONS):
         difficult_entry.text = '0' # Add heuristic to estimate difficulty later on
 
     for i in range(blending_variations):
-        if blending_list[i] == 'motion':
-            bgs[i] = LinearMotionBlur3C(PIL2array3C(bgs[i]))
-        bgs[i].save('./0_' + str(i) + '.png')
+        #if blending_list[i] == 'motion':
+         #   bgs[i] = LinearMotionBlur3C(PIL2array3C(bgs[i]))
+        bgs[i].save(BLENDING_DIR + '/image_2/' + str(PREFIX) + '_' + str(i) + '.png')
 
         bgs[i].putalpha(hls[i])
-        bgs[i].save('./0_' + str(i) + '_hl.png')
+        bgs[i].save(BLENDING_DIR + '/image_hl/' + str(PREFIX) + '_' + str(i) + '_hl.png')
 
         if bg_inst is not None:
-            bg_insts[i].save('./0_' + str(i) + '_inst.png')
+            bg_insts[i].save(BLENDING_DIR + '/instance/' + str(PREFIX) + '_' + str(i) + '_inst.png')
     
         if bg_segm is not None:
-            bg_segms[i].save('./0_' + str(i) + '_segm.png')
+            bg_segms[i].save(BLENDING_DIR + '/semantic/' + str(PREFIX) + '_' + str(i) + '_segm.png')
             bg_segm_np = np.array(bg_segms[i])
 
             bg_segm_rgb_np = np.zeros((bg_segm_np.shape[0], bg_segm_np.shape[1], 3), dtype=np.uint8)
@@ -716,7 +742,7 @@ def create_image_anno(blend_json, blending_variations=BLENDING_VARIATIONS):
             #bg_segm_rgb_np = id2label[bg_segm_np].color
 
             bg_segm_rgb = Image.fromarray(bg_segm_rgb_np) #, 'RGB')
-            bg_segm_rgb.save('./0_' + str(i) + '_segm_rgb.png')
+            bg_segm_rgb.save(BLENDING_DIR + '/semantic_rgb/' + str(PREFIX) + '_' + str(i) + '_segm_rgb.png')
 
     """
     # obj box anno

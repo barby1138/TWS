@@ -351,7 +351,7 @@ class Cutter(object):
       print(id2label[id].name)
 
       data = {}
-      data["class_bame"] = id2label[id].name
+      data["class_name"] = id2label[id].name
       with open('.' + '/inst_' + str(self.idx) + '_' + str(self.instanceId_1) + '.json', 'w') as outfile:  
         json.dump(data, outfile)
 
@@ -369,10 +369,11 @@ class Cutter(object):
       im = self.im
       try:
         im.save('.' + '/inst_' + str(self.idx) + '_' + str(self.instanceId_1) + '.jpg')
-      except OSError:
-        print("save jpg error")
+      except OSError (err):
+        print("save jpg error %s" % err)
     
-      im.putalpha(self.imgNp1_im)
+      im_crop = im.copy()
+      im_crop.putalpha(self.imgNp1_im)
     
       rows = np.any(self.imgNp1_im, axis=1)
       cols = np.any(self.imgNp1_im, axis=0)
@@ -385,7 +386,7 @@ class Cutter(object):
 
       print(rect)
 
-      im.crop((rect)).save('.' + '/inst_' + str(self.idx) + '_' + str(self.instanceId_1) + '.png')
+      im_crop.crop((rect)).save('.' + '/inst_' + str(self.idx) + '_' + str(self.instanceId_1) + '.png')
     
   def button(self, event):
         x, y = int(event.xdata), int(event.ydata)

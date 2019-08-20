@@ -7,5 +7,5 @@
 
 #python convert_kitti_cs_to_coco.py --datadir /home/tsis/Downloads/DS/VK --outdir ./anno --dataset vkitti_instance_only
 
-python convert_kitti_cs_to_coco.py --datadir /home/tsis/Downloads/DS/TWS_1 --outdir ./anno --dataset tws_instance_only
+python convert_kitti_cs_to_coco.py --datadir /home/tsis/Downloads/DS/TWS_50_color --outdir ./anno --dataset tws_instance_only
 

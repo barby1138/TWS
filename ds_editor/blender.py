@@ -23,6 +23,7 @@ from collections import namedtuple
 
 import random as rnd
 
+FG_COLOR_PREPROCESS = False
 ######################
 #import numpy as np
 #import cv2
@@ -625,10 +626,10 @@ def create_image_anno(blend_json, blending_variations=BLENDING_VARIATIONS):
         o_w, o_h = orig_w, orig_h
 
         #color
-        """
-        fg_np = color_transfer( np.array(bg_img), np.array(fg) )
-        fg = Image.fromarray(fg_np)
-        """
+        # source, target
+        if FG_COLOR_PREPROCESS == True:
+            fg_np = color_transfer( np.array(bg_img), np.array(fg) )
+            fg = Image.fromarray(fg_np)
 
         #mirror
         if obj['mirror'] == True:

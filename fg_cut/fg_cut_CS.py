@@ -1,5 +1,5 @@
 """
-Cuts FGs from VOC DS
+Cuts FGs from CS DS
 """
 
 import os
@@ -19,6 +19,12 @@ import numpy
 import argparse
 
 from collections import namedtuple
+
+import os, sys
+
+from pathlib import Path
+
+import json
 
 DO_SHOW = True
 MAKE_INV_MASK = False
@@ -58,69 +64,15 @@ def binarize_image(img_path, target_path, threshold):
     image = binarize_array(image, threshold)
     imsave(target_path, image)
 
-def binarize_array(numpy_array, threshold=1):
-    for i in range(len(numpy_array)):
-        for j in range(len(numpy_array[0])):
-            #if numpy_array[i][j] == 255: #filter border
-             #  numpy_array[i][j] = 0
-
-            if numpy_array[i][j] >= threshold:
-                numpy_array[i][j] = 255 #0
-            else:
-                numpy_array[i][j] = 0 #255
-    return numpy_array
+def binarize_array(numpy_array1, threshold=1):
+    #numpy_array1 = numpy_array.copy()
+    numpy_array1[numpy_array1>=threshold] = 255
+    return numpy_array1
 
 def inv_array(numpy_array, threshold=1):
-    for i in range(len(numpy_array)):
-        for j in range(len(numpy_array[0])):
-            numpy_array[i][j] = 255 - numpy_array[i][j]
-    
+    numpy_array = 255 - numpy_array
     return numpy_array
 
-def save_segmentation(image, seg_image, obj_name, out_path):
-  image.save(out_path + '/' + obj_name + '.jpg')
-
-  plt.figure(figsize=(15, 5))
-  grid_spec = gridspec.GridSpec(1, 3, width_ratios=[6, 6, 6])
-
-  immask_rgb = Image.fromarray(seg_image) #.convert('RGB')
-  plt.subplot(grid_spec[0])
-  plt.imshow(image)
-  plt.imshow(immask_rgb, alpha=0.4)
-  plt.axis('off')
-  plt.title('src image')
-  #immask_rgb.save('./images/seg_img.jpg')
-
-  immask = Image.fromarray(seg_image).convert('RGB').convert('L')
-  immask1 = Image.fromarray(binarize_array(numpy.array(immask)))
-  if MAKE_INV_MASK :
-    immask1_inv = Image.fromarray(inv_array(binarize_array(numpy.array(immask))))
-  else :
-    immask1_inv = immask1
-
-  plt.subplot(grid_spec[1])
-  plt.imshow(immask1_inv)
-  plt.axis('off')
-  plt.title('inv mask')
-  immask1_inv.save(out_path + '/' + obj_name + '.pbm')
-
-  image.putalpha(immask1)
-  plt.subplot(grid_spec[2])
-  plt.imshow(image)
-  plt.axis('off')
-  plt.title('cut FG')
-  image.save(out_path + '/' + obj_name + '_a.png')
-
-  if DO_SHOW:
-    plt.show()
-
-"""
-LABEL_NAMES = np.asarray([
-    'background', 'aeroplane', 'bicycle', 'bird', 'boat', 'bottle', 'bus',
-    'car', 'cat', 'chair', 'cow', 'diningtable', 'dog', 'horse', 'motorbike',
-    'person', 'pottedplant', 'sheep', 'sofa', 'train', 'tv'
-])
-"""
 #--------------------------------------------------------------------------------
 # Definitions
 #--------------------------------------------------------------------------------
@@ -220,9 +172,9 @@ id2label        = { label.id      : label for label in labels           }
 #FULL_LABEL_MAP = np.arange(len(LABEL_NAMES)).reshape(len(LABEL_NAMES), 1)
 #FULL_COLOR_MAP = label_to_color_image(FULL_LABEL_MAP)
 
+#np.unique?
 def unique_array(numpy_array):
     uids = np.zeros((256), dtype=int)
-    prev = 0
     for i in range(len(numpy_array)):
         for j in range(len(numpy_array[0])):
            uids[numpy_array[i][j]] += 1
@@ -232,82 +184,199 @@ def unique_array(numpy_array):
     return uids
 
 def filter_ids(numpy_array, ids):
-    uids = np.zeros((256), dtype=int)
-    prev = 0
-    for i in range(len(numpy_array)):
-        for j in range(len(numpy_array[0])):
-          if all(id != numpy_array[i][j] for id in ids) :
-             numpy_array[i][j] = 0
+    numpy_array1 = numpy_array.copy()
 
-    return numpy_array
+    numpy_array1[np.isin(numpy_array1, ids, invert=True)] = 0
+    return numpy_array1
+
+class Instance(object):
+    instID     = 0
+    labelID    = 0
+    pixelCount = 0
+    medDist    = -1
+    distConf   = 0.0
+
+    def __init__(self, imgNp, instID):
+        if (instID == -1):
+            return
+        self.instID     = int(instID)
+        self.labelID    = int(self.getLabelID(instID))
+        self.pixelCount = int(self.getInstancePixels(imgNp, instID))
+
+    def getLabelID(self, instID):
+        if (instID < 1000):
+            return instID
+        else:
+            return int(instID / 1000)
+
+    def getInstancePixels(self, imgNp, instLabel):
+        return (imgNp == instLabel).sum()
+
+    def toJSON(self):
+        return json.dumps(self, default=lambda o: o.__dict__, sort_keys=True, indent=4)
+
+    def toDict(self):
+        buildDict = {}
+        buildDict["instID"]     = self.instID
+        buildDict["labelID"]    = self.labelID
+        buildDict["pixelCount"] = self.pixelCount
+        buildDict["medDist"]    = self.medDist
+        buildDict["distConf"]   = self.distConf
+        return buildDict
+
+    def fromJSON(self, data):
+        self.instID     = int(data["instID"])
+        self.labelID    = int(data["labelID"])
+        self.pixelCount = int(data["pixelCount"])
+        if ("medDist" in data):
+            self.medDist    = float(data["medDist"])
+            self.distConf   = float(data["distConf"])
+
+    def __str__(self):
+        return "("+str(self.instID)+")"
+        
+
+#
+# review
+#
+
+class Cutter(object):
+  
+  def __init__(self, path):
+      self.pathlist = list(Path(path).glob('*.png'))
+      self.im_path = str(self.pathlist[0])
+      self.mask_path = self.im_path.replace("leftImg8bit", "gtFine").replace(".png", "_instanceIds.png")
+      #print(self.im_path)
+      #print(self.mask_path)
+      self.idx = 0
+      self.instanceId_1 = 0
+
+      self.im = Image.open(self.im_path)
+      self.seg_map = Image.open(self.mask_path).convert('L')
+      self.seg_im = label_to_color_image(numpy.array(self.seg_map)).astype(np.uint8)
+      self.img = Image.open(self.mask_path)
+      # Image as numpy array
+      self.imgNp = np.array(self.img)
+      
+      plt.figure(figsize=(15, 5))
+      self.grid_spec = gridspec.GridSpec(1, 2, width_ratios=[6, 6])
+  
+      plt.connect('key_press_event', self.key)
+      plt.connect('button_press_event', self.button)
+  
+      self.render_pic()
+      plt.show()
+
+  def render_pic(self):
+
+      #self.grid_spec = gridspec.GridSpec(1, 2, width_ratios=[6, 6])
+  
+      plt.subplot(self.grid_spec[0])
+      plt.imshow(self.im)
+      plt.title('src image')
+
+      plt.subplot(self.grid_spec[1])
+      plt.imshow(self.seg_im)
+      plt.title('seg image')
+     
+      plt.draw()
+
+  def init_pic(self, inc):
+      self.idx += inc
+
+      print(self.idx)
+      self.im_path = str(self.pathlist[self.idx])
+      #print(self.im_path)
+      self.mask_path = self.im_path.replace("leftImg8bit", "gtFine").replace(".png", "_instanceIds.png")
+      #print(self.im_path)
+      #print(self.mask_path)
+
+      self.im = Image.open(self.im_path)
+      self.seg_map = Image.open(self.mask_path).convert('L')
+      self.seg_im = label_to_color_image(numpy.array(self.seg_map)).astype(np.uint8)
+      self.img = Image.open(self.mask_path)
+
+      self.imgNp = np.array(self.img)
+  
+      self.render_pic()
+
+  def render_inst(self, point):
+      print(point[0])
+      self.instanceId_1 = self.imgNp[point[0][1]][point[0][0]]
+      self.imgNp1 = binarize_array(filter_ids(self.imgNp, [self.instanceId_1]))
+      self.imgNp1_im = Image.fromarray(self.imgNp1).convert('RGB').convert('L')
+      self.imgNp1_im.save('.' + '/inst_' + str(self.idx) + '_' + str(self.instanceId_1) + '.pbm')
+
+      id = self.instanceId_1 // 1000
+      print(id2label[id].name)
+
+      data = {}
+      data["class_name"] = id2label[id].name
+      with open('.' + '/inst_' + str(self.idx) + '_' + str(self.instanceId_1) + '.json', 'w') as outfile:  
+        json.dump(data, outfile)
+
+      self.crop()
+
+      plt.subplot(self.grid_spec[1])
+      #plt.imshow(Image.fromarray(imgNp1))
+      plt.imshow(self.imgNp1_im)
+      plt.imshow(self.im, alpha=0.4)
+      plt.draw()
+
+  def crop(self):
+      #path_mask_out = path_mask.replace("/instance/", "/mask/").replace(".png", ".pbm")
+
+      im = self.im
+      try:
+        im.save('.' + '/inst_' + str(self.idx) + '_' + str(self.instanceId_1) + '.jpg')
+      except OSError (err):
+        print("save jpg error %s" % err)
+    
+      im_crop = im.copy()
+      im_crop.putalpha(self.imgNp1_im)
+    
+      rows = np.any(self.imgNp1_im, axis=1)
+      cols = np.any(self.imgNp1_im, axis=0)
+      if len(np.where(rows)[0]) > 0:
+        ymin, ymax = np.where(rows)[0][[0, -1]]
+        xmin, xmax = np.where(cols)[0][[0, -1]]
+        rect = int(xmin), int(ymin), int(xmax), int(ymax)
+      else:
+        rect = -1, -1, -1, -1
+
+      print(rect)
+
+      im_crop.crop((rect)).save('.' + '/inst_' + str(self.idx) + '_' + str(self.instanceId_1) + '.png')
+    
+  def button(self, event):
+        x, y = int(event.xdata), int(event.ydata)
+        print((x, y))
+        point = [[x,y]]
+        self.render_inst(point)
+
+  def key(self, event):
+    print('press', event.key)
+    sys.stdout.flush()
+    if event.key == 'x':
+        print("close")
+        plt.close()
+
+    if event.key == 'd':
+        print("dump")
+        print(instanceId_1)
+
+    if event.key == 'right':
+        self.init_pic(1)
+
+    if event.key == 'left':
+        self.init_pic(-1)
 
 parser = argparse.ArgumentParser()
-
-subparsers = parser.add_subparsers(help='commands', dest='command')
-
-seg_parser = subparsers.add_parser('seg', help='cut segmentation')
-seg_parser.add_argument('--image', '-i', help='DEVIS img filename', required=True)
-seg_parser.add_argument('--mask', '-k', help='DEVIS seg mask filename', required=True)
-seg_parser.add_argument('--name', '-n', help='FG obj name', required=True)
-seg_parser.add_argument('--output', '-o', help='output path', required=True)
-seg_parser.add_argument('--filter_ids', '-f', help='filter ids', type=int, nargs='+', required=True)
-
-list_parser = subparsers.add_parser('list', help='list labels')
-list_parser.add_argument('--image', '-i', help='DEVIS img filename', required=True)
-list_parser.add_argument('--mask', '-k', help='DEVIS seg mask filename', required=True)
+parser.add_argument('--image', '-i', help='DEVIS img folder', required=True)
 
 args = parser.parse_args()
 
-im = Image.open(args.image)
-seg_map = Image.open(args.mask).convert('L')
-seg_im = label_to_color_image(numpy.array(seg_map)).astype(np.uint8)
+cutter = Cutter(args.image)
 
-#print(numpy.array(seg_im))
-if args.command == "seg":
-
-  print(unique_array(numpy.array(seg_map)))
-
-  seg_map_f = filter_ids(numpy.array(seg_map), args.filter_ids)
-  print(unique_array(seg_map_f))
-
-  seg_im_filtered = label_to_color_image(seg_map_f).astype(np.uint8)
-
-  plt.figure(figsize=(15, 5))
-  grid_spec = gridspec.GridSpec(1, 2, width_ratios=[6, 6])
-    
-  plt.subplot(grid_spec[0])
-  plt.imshow(seg_im)
-  plt.axis('off')
-  plt.title('src image')
-
-  plt.subplot(grid_spec[1])
-  plt.imshow(seg_im_filtered)
-  plt.axis('off')
-  plt.title('filtered image')
-
-  if DO_SHOW:
-    plt.show()
-
-  seg_im = seg_im_filtered
-
-  save_segmentation(im, numpy.array(seg_im), args.name, args.output)
-if args.command == "list":
-  plt.figure(figsize=(15, 5))
-  grid_spec = gridspec.GridSpec(1, 2, width_ratios=[6, 6])
+        
   
-  plt.subplot(grid_spec[0])
-  plt.imshow(im)
-  plt.axis('off')
-  plt.title('src image')
-
-  plt.subplot(grid_spec[1])
-  plt.imshow(seg_im)
-  plt.axis('off')
-  plt.title('seg image')
-
-  if DO_SHOW:
-    plt.show()
-
-  uids = unique_array(numpy.array(seg_map))
-  for i in uids:
-    print("name: {} id: {}".format(id2label[i].name, id2label[i].id))

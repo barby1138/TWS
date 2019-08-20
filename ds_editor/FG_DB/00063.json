@@ -1,3 +1,5 @@
 {
-"class_name" : "person"
+"class_name" : "person",
+"view": "from:85",
+"light": "soft"
 }

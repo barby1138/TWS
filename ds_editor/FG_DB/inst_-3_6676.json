@@ -1,1 +1,5 @@
-{"class_name": "car"}
+{
+"class_name": "car",
+"view": "to:-5",
+"light": "to:-20"
+}
